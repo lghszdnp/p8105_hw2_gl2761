@@ -14,3 +14,125 @@ library(tidyverse)
 library(readxl)
 library(dplyr)
 ```
+
+### Problem 1
+```{r}
+trans_ent = 
+  read_csv(
+    "data/NYC_Transit_Subway_Entrance_And_Exit_Data.csv",
+    col_types = cols(Route8 = "c", Route9 = "c", Route10 = "c", Route11 = "c")) %>% 
+  janitor::clean_names() %>% 
+  select(
+    line, station_name, station_latitude, station_longitude, 
+    starts_with("route"), entry, exit_only, vending, entrance_type, 
+    ada) %>% 
+  mutate(entry = ifelse(entry == "YES", TRUE, FALSE))
+```
+
+These code chunk first import the dataset, then convert the 4 route variables from num to char, `janitor::clean` was use to get a clean column name. Then use `select` function to select the column we want. Finally, update values in entry column from 'yes' and 'no' to 'TRUE' and 'FALSE'. 
+
+The following code chunk selects station name and line, and then uses `distinct()` to obtain all unique combinations. As a result, the number of rows in this dataset is the number of unique stations.
+
+```{r}
+trans_ent %>% 
+  select(station_name, line) %>% 
+  distinct
+```
+
+There are 465 distinct stations here.
+
+The next code chunk is similar, but filters according to ADA compliance as an initial step. This produces a dataframe in which the number of rows is the number of ADA compliant stations. 
+
+```{r}
+trans_ent %>% 
+  filter(ada == TRUE) %>% 
+  select(station_name, line) %>% 
+  distinct
+```
+
+There are 84 stations are ADA compliant.
+
+To compute the proportion of station entrances / exits without vending allow entrance, we first exclude station entrances that do not allow vending. Then, we focus on the `entry` variable -- this logical, so taking the mean will produce the desired proportion (recall that R will coerce logical to numeric in cases like this).
+
+```{r}
+trans_ent %>% 
+  filter(vending == "NO") %>% 
+  pull(entry) %>% 
+  mean
+```
+
+There are 37.70492% of station entrance / exists without vending allow entrance. 
+
+Lastly, we write a code chunk to identify stations that serve the A train, and to assess how many of these are ADA compliant. As a first step, we tidy the data as alluded to previously; that is, we convert `route` from wide to long format. After this step, we can use tools from previous parts of the question (filtering to focus on the A train, and on ADA compliance; selecting and using `distinct` to obtain dataframes with the required stations in rows).
+
+```{r}
+trans_ent %>% 
+  pivot_longer(
+    route1:route11,
+    names_to = "route_num",
+    values_to = "route") %>% 
+  filter(route == "A") %>% 
+  select(station_name, line) %>% 
+  distinct
+
+trans_ent %>% 
+  pivot_longer(
+    route1:route11,
+    names_to = "route_num",
+    values_to = "route") %>% 
+  filter(route == "A", ada == TRUE) %>% 
+  select(station_name, line) %>% 
+  distinct
+```
+
+There are 60 distinct stations serve the A train and 17 stations are ADA compliant.
+
+### Problem 2
+
+Read and clean the Mr. Trash Wheel sheet.
+
+```{r trash_wheel, message = FALSE}
+trash_wheel = read_excel("data/Trash Wheel Collection Data.xlsx", 
+                         sheet = "Mr. Trash Wheel", 
+                         range = "A2:N547")%>%
+  janitor::clean_names()%>%
+  drop_na(dumpster)%>%
+  mutate(sports_balls = as.integer(round(sports_balls))) %>%
+  # New column to track sheet
+  mutate(sheet = "Mr. Trash Wheel")
+```
+
+Read and clean the Porfessor Trash Wheel sheet.
+
+```{r pro_trash_wheel, message = FALSE}
+pro_trash_wheel = read_excel("data/Trash Wheel Collection Data.xlsx", 
+                         sheet = "Professor Trash Wheel", 
+                         range = "A2:M96")%>%
+  janitor::clean_names()%>%
+  drop_na(dumpster)%>%
+  # New column to track sheet
+  mutate(sheet = "Professor Trash Wheel") %>%
+  # Create a new column and convert the variable to combine the datasets
+  mutate(sports_balls = 0) %>%
+  mutate(year = as.character(year))
+```
+
+Combine the pro_trash_wheel and trash_wheel as one dataset.
+
+```{r combined_trash_wheel, message = FALSE}
+combined_trash_wheel = 
+  bind_rows(trash_wheel, pro_trash_wheel)
+```
+
+Write a paragraph about data:
+
+In Trash Wheel data, it has key variables: `r names(trash_wheel)`, with number of `r ncol(trash_wheel)` and has `r nrow(trash_wheel)` observations.
+
+In Porfessor Trash Wheel data, it has key variables: `r names(pro_trash_wheel)`, with number of `r ncol(pro_trash_wheel)` and has `r nrow(pro_trash_wheel)` observations.
+
+In Combined Trash Wheel data, it has key variables: `r names(combined_trash_wheel)`, with number of `r ncol(combined_trash_wheel)` and has `r nrow(combined_trash_wheel)` observations.
+
+The total weight of trash collected by Professor Trash Wheel is `r sum(pull(pro_trash_wheel, weight_tons))`.
+
+The the total number of sports balls collected by Mr. Trash Wheel in 2020 is `r sum(pull(filter(trash_wheel, year == 2020), sports_balls))`.
+
