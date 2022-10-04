@@ -1,0 +1,16 @@
+---
+title: "p8105_hw2_gl2761"
+author: "Gonghao Liu"
+date: "10/4/2022"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, message = FALSE)
+```
+
+```{r, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(readxl)
+library(dplyr)
+```
