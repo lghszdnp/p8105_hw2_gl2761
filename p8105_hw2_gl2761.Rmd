@@ -136,3 +136,75 @@ The total weight of trash collected by Professor Trash Wheel is `r sum(pull(pro_
 
 The the total number of sports balls collected by Mr. Trash Wheel in 2020 is `r sum(pull(filter(trash_wheel, year == 2020), sports_balls))`.
 
+### Problem 3
+
+Read and clean data in pols_month.
+
+```{r pols_month, message = FALSE}
+pols_month = read_csv("./fivethirtyeight_datasets/pols-month.csv")%>%
+  janitor::clean_names()%>%
+  separate(mon, into = c("year", "month", "day"))%>%
+  mutate(
+    year = as.integer(year),
+    month = as.integer(month),
+    month = month.name[month],
+    president = ifelse(prez_dem == "1", "dem", "gop")
+    )%>%
+  select(- day, -prez_dem, -prez_gop)%>%
+relocate(year, month, president)
+```
+
+Read and clean the data snp.csv as well, arrange according to year and month, and organize columns.
+
+```{r snp, message = FALSE}
+snp = read_csv("./fivethirtyeight_datasets/snp.csv")%>%
+  janitor::clean_names()%>%
+  mutate(date = lubridate::mdy(date))%>%
+  separate(date, into = c("year", "month", "day"))%>%
+  mutate(
+   month = as.integer(month),
+   month = month.name[month],
+   year = as.integer(year),
+   year = ifelse(year>2021, year - 100, year)
+  )%>%
+  select(-day)%>%
+  arrange(year, month)%>%
+  relocate(year,month)
+```
+
+Read and clean the unemployment data.
+
+```{r unemployment_tidy, message = FALSE}
+unemployment_data = read_csv("./fivethirtyeight_datasets/unemployment.csv")%>%
+  janitor::clean_names()
+colnames(unemployment_data) = c("year","January","February","March","April","May","June","July","August","September","October","November","December")
+
+unemployment_tidy = 
+  unemployment_data %>%
+  pivot_longer(
+    January:December,
+    names_to = "month",
+    values_to = "unemp_percent"
+  )%>%
+  drop_na()%>%
+  relocate(year, month)
+```
+
+Join the datasets.
+
+```{r join, message = FALSE}
+pols_snp = left_join(pols_month, snp, by = c("year", "month"))
+
+pols_snp_unemp = left_join(pols_snp, unemployment_tidy, by = c("year", "month"))
+```
+
+A short paragraph about these data sets.
+In our pols_month data set, it shows the number of national politicians who are democratic or republican at any given time. It has `r ncol(pols_month)` variables which are `r names(pols_month)`, and has `r nrow(pols_month)` observations. The time period is from `r min(pull(pols_month, year))` to `r max(pull(pols_month, year))`.
+
+In snp data set, it shows Standard & Poor’s stock market index (S&P). It has `r ncol(snp)` variables including `r names(snp)`, and has `r nrow(snp)` observations. The time period is from `r min(pull(snp, year))` to `r max(pull(snp, year))`.
+
+In unemployment data set, it has `r ncol(unemployment_tidy)` variables with the name of `r names(unemployment_tidy)`, and it has `r nrow(unemployment_tidy)` observations. Time range is between `r min(pull(unemployment_tidy, year))` to `r max(pull(unemployment_tidy, year))`.
+
+In the first combined data set, it combined pols_month data and snp data, with dimension `r nrow(pols_snp)` and `r ncol(pols_snp)`. Variables include `r names(pols_snp)`. Time period is from `r min(pull(pols_snp, year))` to `r max(pull(pols_snp, year))`.
+
+The last dataset contains pols_month data, snp data and unemployment data, with `r nrow(pols_snp_unemp)` observations and `r ncol(pols_snp_unemp)` variables. Variables include `r names(pols_snp_unemp)`. Time period is from `r min(pull(pols_snp_unemp, year))` to `r max(pull(pols_snp_unemp, year))`.
